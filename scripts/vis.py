@@ -10,13 +10,10 @@ def vis_network(nodes, edges, physics=False):
       <link href="../lib/vis/dist/vis.css" rel="stylesheet" type="text/css">
     </head>
     <body>
-
     <div id="{id}"></div>
-
     <script type="text/javascript">
       var nodes = {nodes};
       var edges = {edges};
-
       var container = document.getElementById("{id}");
       
       var data = {{
@@ -49,7 +46,6 @@ def vis_network(nodes, edges, physics=False):
       }};
       
       var network = new vis.Network(container, data, options);
-
     </script>
     </body>
     </html>
@@ -72,46 +68,46 @@ def draw(graph, options, physics=False, limit=100):
     # Omitting a node label from the options dict will leave the node unlabeled in the visualization.
     # Setting physics = True makes the nodes bounce around when you touch them!
     query = """
-    MATCH n
+    MATCH (n)
     WITH n, RAND() AS random
     ORDER BY random LIMIT {limit}
     OPTIONAL MATCH (n)-[r]->(m)
     RETURN n, r, m
     """
 
-    data = graph.cypher.execute(query, limit=limit)
+    data = [_ for _ in graph.run(query, limit=limit)]
 
     nodes = []
     edges = []
 
-    def get_vis_info(node):
-        node_label = list(node.labels)[0]
+    def get_vis_info(node,index):
+        node_label = list(node.labels())[0]
         prop_key = options.get(node_label)
-        vis_label = node.properties.get(prop_key, "")
-        vis_id = node.ref.split("/")[1]
+        vis_label = dict(node).get(prop_key, "")
+        vis_id = index
 
         title = {}
 
-        for key, value in node.properties.items():
+        for key, value in dict(node).items():
             key = key.encode("utf8")
-            value = value.encode("utf8") if type(value) is unicode else value
+            value = value.encode("utf8") if type(value) is str else value
 
             title[key] = value
 
         return {"id": vis_id, "label": vis_label, "group": node_label, "title": repr(title)}
 
-    for row in data:
+    for index,row in enumerate(data):
         source = row[0]
         rel = row[1]
         target = row[2]
 
-        source_info = get_vis_info(source)
+        source_info = get_vis_info(source,index)
 
         if source_info not in nodes:
             nodes.append(source_info)
 
         if rel:
-            target_info = get_vis_info(target)
+            target_info = get_vis_info(target,index)
 
             if target_info not in nodes:
                 nodes.append(target_info)
